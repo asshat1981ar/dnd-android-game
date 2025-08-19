@@ -1,0 +1,56 @@
+name: 🔍 Kotlin Code Quality & Formatting
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  kotlin-quality:
+    name: 🔍 Kotlin Quality Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 🔧 Cache Gradle Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+
+      - name: 🔍 Kotlin Linting (ktlint)
+        run: |
+          echo "🔍 Running Kotlin linting with ktlint..."
+          chmod +x ./gradlew
+          ./gradlew ktlintCheck
+
+      - name: 📝 Auto-format Kotlin Code
+        if: failure()
+        run: |
+          echo "📝 Auto-formatting Kotlin code..."
+          ./gradlew ktlintFormat
+
+      - name: 🔍 Detekt Static Analysis
+        run: |
+          echo "🔍 Running Detekt static analysis..."
+          ./gradlew detekt || echo "⚠️ Detekt issues found"
+
+      - name: 📊 Upload Detekt Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: detekt-reports-${{ github.sha }}
+          path: |
+            app/build/reports/detekt/
+            build/reports/detekt/
